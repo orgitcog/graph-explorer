@@ -1,0 +1,61 @@
+@use "../../../../styles/variables";
+
+.request-editors {
+    width:100%;
+    margin-top: variables.$gutter;
+    margin-bottom: variables.$gutter;
+    height: 270px;
+    border: 1px solid silver;
+    overflow: hidden;
+
+
+    .ms-Pivot.root-84 {
+        width: 100%;
+        background-color: #eeeeee;
+    }
+
+    .request-editor-control {
+        margin-top:10px;
+        width: 100%;
+        text-align: center;
+        position: relative;
+
+        .headers-editor {
+            padding: variables.$gutter;
+
+            .header-input-button {
+                width: 100%;
+            }
+
+            .remove-header-btn {
+                font-size: 25px;
+            }
+        }
+    }
+
+    .headers-list {
+        overflow-y: scroll;
+        max-height: 230px;
+        min-height: 230px;
+        overflow-x: hidden;
+
+        .detail-list {
+            width:100%;
+            margin-left: variables.$gutter;
+
+            .field-content {
+                line-height: 32px;
+                padding: variables.$gutter;
+            }
+        }
+    }
+}
+
+.query-request {
+    overflow: hidden;
+    height: inherit;
+}
+
+.ms-Viewport {
+    height: 100%;
+}

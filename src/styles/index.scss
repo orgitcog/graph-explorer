@@ -1,0 +1,11 @@
+@use "reset";
+
+.ms-Pivot button{
+    margin: 5px !important;
+}
+
+.ms-DetailsHeader {
+  padding-top: 0px !important;
+}
+
+iframe#webpack-dev-server-client-overlay{display:none!important}

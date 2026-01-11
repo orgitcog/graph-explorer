@@ -1,0 +1,43 @@
+@use "../../../styles/variables";
+
+.query-response {
+  margin-top: $gutter;
+  border: 1px solid silver;
+  overflow: hidden;
+  display: block;
+
+
+  .ms-Pivot.root-84 {
+    width: 100%;
+  }
+
+
+  @media screen and (min-width: 1320px) {
+    .pivot-response button:nth-last-child(2) {
+      float: right;
+    }
+    .unstyled-pivot button:nth-last-child(2) {
+      float: none;
+    }
+    .adaptive-pivot button:nth-last-child(2) {
+      float: none;
+    }
+  }
+
+  .default-text {
+    display: flex;
+    width: 100%;
+    min-height: 370px;
+    font-size: 50px;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+.share-query-params {
+  font-family: 'monospace', 'courier';
+  font-size: 12px;
+  width: '100%';
+  overflow-x: auto;
+  overflow-y: hidden;
+}

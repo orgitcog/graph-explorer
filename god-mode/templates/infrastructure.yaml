@@ -1,0 +1,109 @@
+# God Mode Infrastructure Template
+# Use this template to define your organizational structure
+# Run: python god_mode.py provision --config infrastructure.yaml
+
+# Azure AD Groups/Organizations
+groups:
+  - displayName: "Engineering"
+    description: "Engineering department"
+    mailEnabled: false
+    securityEnabled: true
+    mailNickname: "engineering"
+    
+  - displayName: "Sales"
+    description: "Sales department"
+    mailEnabled: false
+    securityEnabled: true
+    mailNickname: "sales"
+    
+  - displayName: "Operations"
+    description: "Operations department"
+    mailEnabled: false
+    securityEnabled: true
+    mailNickname: "operations"
+
+# Azure AD Users
+users:
+  # Engineering Team
+  - displayName: "Alice Johnson"
+    username: "alice.johnson"
+    department: "Engineering"
+    jobTitle: "Senior Developer"
+    
+  - displayName: "Bob Smith"
+    username: "bob.smith"
+    department: "Engineering"
+    jobTitle: "DevOps Engineer"
+    
+  - displayName: "Carol Williams"
+    username: "carol.williams"
+    department: "Engineering"
+    jobTitle: "Tech Lead"
+    
+  # Sales Team
+  - displayName: "David Brown"
+    username: "david.brown"
+    department: "Sales"
+    jobTitle: "Account Executive"
+    
+  - displayName: "Eve Davis"
+    username: "eve.davis"
+    department: "Sales"
+    jobTitle: "Sales Manager"
+    
+  # Operations Team
+  - displayName: "Frank Miller"
+    username: "frank.miller"
+    department: "Operations"
+    jobTitle: "Operations Manager"
+    
+  - displayName: "Grace Wilson"
+    username: "grace.wilson"
+    department: "Operations"
+    jobTitle: "Support Specialist"
+
+# Azure AD Applications
+applications:
+  - displayName: "Internal Dashboard"
+    signInAudience: "AzureADMyOrg"
+    web:
+      redirectUris:
+        - "https://dashboard.example.com/auth/callback"
+      implicitGrantSettings:
+        enableIdTokenIssuance: true
+        
+  - displayName: "Mobile App"
+    signInAudience: "AzureADMyOrg"
+    publicClient:
+      redirectUris:
+        - "myapp://auth"
+
+# GitHub Repositories
+github_repos:
+  - org: "orgitcog"
+    name: "frontend-app"
+    description: "Main frontend application"
+    private: false
+    auto_init: true
+    
+  - org: "orgitcog"
+    name: "backend-api"
+    description: "Backend API services"
+    private: false
+    auto_init: true
+    
+  - org: "orgitcog"
+    name: "infrastructure"
+    description: "Infrastructure as code"
+    private: true
+    auto_init: true
+
+# Teams (Microsoft Teams)
+teams:
+  - displayName: "Engineering Team"
+    description: "Engineering collaboration space"
+    visibility: "private"
+    
+  - displayName: "All Hands"
+    description: "Company-wide announcements"
+    visibility: "public"

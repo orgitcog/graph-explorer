@@ -1,0 +1,6 @@
+@use "../../../styles/variables";
+
+ .ms-Dropdown:focus {
+   outline-style:double !important;
+   outline-width:thick !important ;
+}

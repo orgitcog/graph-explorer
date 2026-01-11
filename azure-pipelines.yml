@@ -1,0 +1,264 @@
+# ------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the MIT License.
+# See License in the project root for license information.
+# ------------------------------------------------------------------------------
+#
+# 1. Validates the repository's pull requests and commits
+# 2. Builds and publishes release artifacts
+# 3. This pipeline will be extended to the OneESPT template
+name: $(date:yyyyMMdd)$(rev:.r)
+pr:
+  branches:
+    include:
+      - master
+      - dev
+      - feature/*
+      - task/*
+      - fix/*
+  paths:
+    exclude:
+      - .github/*
+      - .vscode/*
+      - build/*
+      - .gitignore
+      - .prettierrc
+      - CHANGELOG.md
+      - CONTRIBUTING.md
+      - LICENSE
+      - README.md
+      - azure-pipelines.yml
+      - package-lock.json
+variables:
+  isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  isDev: $[eq(variables['Build.SourceBranch'], 'refs/heads/dev')]
+trigger:
+  branches:
+    include:
+      - master
+      - dev
+      - feature/*
+      - task/*
+      - fix/*
+  paths:
+    exclude:
+      - .github/*
+      - .vscode/*
+      - build/*
+      - .gitignore
+      - .prettierrc
+      - CHANGELOG.md
+      - CONTRIBUTING.md
+      - LICENSE
+      - README.md
+      - azure-pipelines.yml
+      - package-lock.json
+resources:
+  repositories:
+  - repository: 1ESPipelineTemplates
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: ReleasePipelines
+    type: git
+    name: "Graph Developer Experiences/release-pipelines"
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1ESPipelineTemplates
+  parameters:
+    pool:
+      name: Azure-Pipelines-1ESPT-ExDShared
+      image: windows-latest
+      os: windows
+    sdl:
+      sourceRepositoriesToScan:
+        exclude:
+        - repository: ReleasePipelines
+    customBuildTags:
+    - ES365AIMigrationTooling
+    stages:
+    - stage: BuildTestAndPublish
+      jobs:
+      - job: One
+        displayName: "Build and test validation"
+        steps:
+        - task: ComponentGovernanceComponentDetection@0
+          inputs:
+            scanType: "Register"
+            verbosity: "Verbose"
+            alertWarningLevel: "High"
+            ignoreDirectories: ".github,.vscode/"
+        - task: NodeTool@0
+          inputs:
+            versionSpec: "18.16.x"
+          displayName: "Install Node.js"
+        - script: |
+            npm install
+          displayName: "npm install"
+        - script: |
+            npm run lint
+          displayName: "Runs linting checks"
+        - script: |
+            npm test
+          displayName: "Runs Unit tests"
+        - task: PublishTestResults@2
+          condition: succeededOrFailed()
+          inputs:
+            testResultsFormat: "JUnit"
+            testResultsFiles: "test-report.xml"
+          displayName: "Publish Test Results"
+        - script: |
+            npm run build
+          displayName: "Run build"
+      - job: Two
+        displayName: "Publish artifacts"
+        dependsOn: One
+        steps:
+        - task: NodeTool@0
+          inputs:
+            versionSpec: "18.16.x"
+          displayName: "Install Node.js"
+        - script: |
+            npm install
+          displayName: "npm install"
+        - script: |
+            npm run build
+          env:
+            REACT_APP_CLIENT_ID: $(REACT_APP_STAGING_CLIENT_ID)
+            REACT_APP_INSTRUMENTATION_KEY: $(REACT_APP_STAGING_INSTRUMENTATION_KEY)
+            REACT_APP_CONNECTION_STRING: $(REACT_APP_STAGING_CONNECTION_STRING)
+            REACT_APP_FEEDBACK_CAMPAIGN_ID: $(REACT_APP_STAGING_FEEDBACK_CAMPAIGN_ID)
+            REACT_APP_NPS_FEEDBACK_CAMPAIGN_ID: $(REACT_APP_NPS_FEEDBACK_CAMPAIGN_ID)
+            REACT_APP_NOMINATION_PERIOD: $(REACT_APP_NOMINATION_PERIOD)
+            REACT_APP_COOLDOWN_PERIOD: $(REACT_APP_COOLDOWN_PERIOD)
+            REACT_APP_USAGE_TIME: $(REACT_APP_USAGE_TIME)
+            REACT_APP_DEVX_API_URL: $(REACT_APP_DEVX_API_URL)
+            REACT_APP_MIGRATION_PARAMETER: $(REACT_APP_MIGRATION_PARAMETER)
+          displayName: "Build static assets for staging"
+        - task: PowerShell@2
+          displayName: "Set version-number"
+          condition: and(succeeded(), eq(variables['isMaster'], 'true'))
+          inputs:
+            targetType: "inline"
+            script: |
+              $lernaPath = "$Env:BUILD_SOURCESDIRECTORY\package.json"
+              $json = Get-Content "$lernaPath" | Out-String | ConvertFrom-Json
+              $versionNumber = $json.version;
+              Write-Host "Setting the build number variable to '$versionNumber'."
+              Write-Host "##vso[build.updatebuildnumber]$versionNumber"
+        - script: |
+            npm run build
+          condition: and(succeeded(), eq(variables['isMaster'], 'true'))
+          env:
+            REACT_APP_CLIENT_ID: $(REACT_APP_PROD_CLIENT_ID)
+            REACT_APP_INSTRUMENTATION_KEY: $(REACT_APP_INSTRUMENTATION_KEY)
+            REACT_APP_CONNECTION_STRING: $(REACT_APP_CONNECTION_STRING)
+            REACT_APP_FEEDBACK_CAMPAIGN_ID: $(REACT_APP_FEEDBACK_CAMPAIGN_ID)
+            REACT_APP_NPS_FEEDBACK_CAMPAIGN_ID: $(REACT_APP_NPS_FEEDBACK_CAMPAIGN_ID)
+            REACT_APP_NOMINATION_PERIOD: $(REACT_APP_NOMINATION_PERIOD)
+            REACT_APP_COOLDOWN_PERIOD: $(REACT_APP_COOLDOWN_PERIOD)
+            REACT_APP_USAGE_TIME: $(REACT_APP_USAGE_TIME)
+            REACT_APP_DEVX_API_URL: $(REACT_APP_DEVX_API_URL)
+            REACT_APP_MIGRATION_PARAMETER: $(REACT_APP_MIGRATION_PARAMETER)
+          displayName: "Build static assets for prod"
+        - task: PowerShell@2
+          displayName: "Create _manifest directory"
+          inputs:
+            targetType: "inline"
+            script: |
+              $manifestPath = "$Env:SYSTEM_DEFAULTWORKINGDIRECTORY/_manifest"
+              mkdir -p $manifestPath
+              Write-Host "Created directory '$manifestPath'."
+        - task: ManifestGeneratorTask@0
+          inputs:
+            ManifestDirPath: "$(System.DefaultWorkingDirectory)/_manifest"
+            BuildComponentPath: "$(System.DefaultWorkingDirectory)/build"
+            PackageName: "graph-explorer-v2"
+            PackageVersion: "$(Build.UpdateBuildNumber)"
+        - task: CopyFiles@1
+          displayName: "Copy manifest files to artifact staging dir: manifest"
+          inputs:
+            SourceFolder: "$(System.DefaultWorkingDirectory)/_manifest"
+            TargetFolder: "$(Build.ArtifactStagingDirectory)/manifest"
+        - task: CopyFiles@1
+          displayName: "Copy files to: $(Build.ArtifactStagingDirectory)/build"
+          inputs:
+            SourceFolder: "$(System.DefaultWorkingDirectory)/build"
+            TargetFolder: "$(Build.ArtifactStagingDirectory)/build"
+        - task: DeleteFiles@1
+          inputs:
+            contents: node_modules
+          displayName: "Delete node_modules"
+        - task: ArchiveFiles@2
+          inputs:
+            rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/build'
+            includeRootFolder: false
+            archiveType: 'zip'
+            archiveFile: '$(Build.ArtifactStagingDirectory)/build/graph-explorer.zip'
+            replaceExistingArchive: true
+        templateContext:
+          outputs:
+          - output: pipelineArtifact
+            displayName: 'Publish Artifact: manifest'
+            targetPath: "$(Build.ArtifactStagingDirectory)/manifest"
+            artifactName: manifest
+          - output: pipelineArtifact
+            displayName: 'Publish Artifact: drop'
+            targetPath: "$(build.ArtifactStagingDirectory)/build"
+            artifactName: drop
+      - template: pipelines/templates/checkout-and-copy-1es.yml@ReleasePipelines
+        parameters:
+          directory: 'microsoft-graph-explorer-v4'
+          repoName: ReleasePipelines
+          dependsOn: ['Two']
+
+    - stage: DeployProduction
+      condition: and(contains(variables['build.sourceBranch'], 'refs/heads/master'), succeeded())
+      dependsOn: BuildTestAndPublish
+      jobs:
+      - deployment: production
+        templateContext:
+          type: releaseJob
+          isProduction: true
+          inputs:
+          - input: pipelineArtifact
+            artifactName: drop
+            targetPath: '$(Build.ArtifactStagingDirectory)/drop'
+        environment: graphexplorer-production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - task: AzureFileCopy@6
+                displayName: 'Deploy to portal - staging'
+                inputs:
+                  SourcePath: '$(Build.ArtifactStagingDirectory)/drop/*'
+                  azureSubscription: 'Federated Portals Managed Identity Connection'
+                  Destination: AzureBlob
+                  storage: graphstagingblobstorage
+                  ContainerName: staging
+                  BlobPrefix: 'vendor/bower_components/explorer$(Build.BuildNumber)/build'
+
+              - task: AzureFileCopy@6
+                displayName: 'Deploy to portal - production'
+                inputs:
+                  SourcePath: '$(Build.ArtifactStagingDirectory)/drop/*'
+                  azureSubscription: 'Federated Portals Managed Identity Connection'
+                  Destination: AzureBlob
+                  storage: graphprodblobstorage
+                  ContainerName: prod
+                  BlobPrefix: 'vendor/bower_components/explorer$(Build.BuildNumber)/build'
+
+              - task: ArchiveFiles@2
+                displayName: 'Archive built assets'
+                inputs:
+                  rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/drop/'
+                  archiveFile: '$(Build.ArtifactStagingDirectory)/graph-explorer-$(Build.BuildNumber)-$(Build.BuildId).zip'
+
+              - task: GitHubRelease@1
+                displayName: 'GitHub release (v$(Build.BuildNumber)-$(Build.BuildId))'
+                inputs:
+                  gitHubConnection: 'GitHub - thewahome'
+                  action: edit
+                  tag: 'v$(Build.BuildNumber)'
+                  title: 'Graph Explorer - v$(Build.BuildNumber)'
+                  assets: '$(Build.ArtifactStagingDirectory)/*.zip'
+                  changeLogType: issueBased
